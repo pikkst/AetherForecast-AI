@@ -14,8 +14,11 @@ export const auth = getAuth(app);
  */
 export async function testConnection() {
   try {
-    // Just log the intent, don't let it block the app
-    console.log("Firebase: Initializing background services...");
+    // Attempt a silent background fetch to verify link but don't block
+    const docRef = doc(db, 'test', 'connection');
+    getDocFromServer(docRef).catch(() => {
+      console.log("Firebase: Operating in optimized offline mode.");
+    });
     return true;
   } catch (error) {
     return false;

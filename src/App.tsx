@@ -30,7 +30,7 @@ import { DataScienceDashboard } from './components/DataScienceDashboard';
 import { logWeatherComparison, getModelPerformance } from './services/learningService';
 import { auth, testConnection } from './services/firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { getUserSettings, saveLocation, removeLocation } from './services/userService';
+import { getUserSettings, saveLocation, removeLocation, saveNode } from './services/userService';
 import { SavedLocations } from './components/SavedLocations';
 
 export default function App() {
@@ -46,6 +46,7 @@ export default function App() {
   const [view, setView] = useState<'weather' | 'datascience'>('weather');
   const [savedLocations, setSavedLocations] = useState<string[]>([]);
   const [modelVariant, setModelVariant] = useState<'standard' | 'experimental'>('standard');
+  const [nodes, setNodes] = useState<Record<string, string>>({});
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,6 +135,28 @@ export default function App() {
     if (settings) setSavedLocations(settings.savedLocations);
   };
 
+  const handleSaveNode = async (nodeId: string) => {
+    // If we have a current locationName, use it. Otherwise prompt.
+    let loc = locationName;
+    
+    if (loc === "Identifying..." || !loc) {
+      loc = prompt("Enter location for this node (City name):") || "";
+    }
+
+    if (loc && loc !== "Identifying...") {
+      const result = await forwardGeocode(loc);
+      if (result) {
+        await saveNode(nodeId, result.name);
+        const settings = await getUserSettings();
+        if (settings?.nodes) setNodes(settings.nodes);
+        // Optionally re-init to ensure sync
+        initWeather(result.lat, result.lon, result.name);
+      } else {
+        alert("Location not found.");
+      }
+    }
+  };
+
   const handleRemoveLocation = async (loc: string) => {
     await removeLocation(loc);
     const settings = await getUserSettings();
@@ -154,7 +177,10 @@ export default function App() {
         await testConnection();
         await signInAnonymously(auth);
         const settings = await getUserSettings();
-        if (settings) setSavedLocations(settings.savedLocations);
+        if (settings) {
+          setSavedLocations(settings.savedLocations);
+          if (settings.nodes) setNodes(settings.nodes);
+        }
       } catch (err: any) {
         if (err?.code === 'auth/admin-restricted-operation') {
           console.warn("Firebase Anonymous Auth is disabled. Please enable it in the Firebase Console (Authentication > Sign-in method).");
@@ -305,13 +331,25 @@ export default function App() {
         <main className="grid grid-cols-12 gap-8 flex-grow">
           {/* Live Node Monitor */}
           <div className="col-span-12 flex gap-4 overflow-x-auto pb-4 scrollbar-none">
-            {['TLL-1', 'NYC-4', 'TYO-2', 'LDN-7'].map(node => (
-              <div key={node} className="flex-shrink-0 glass px-4 py-2 rounded-xl flex items-center gap-3 border-sky-500/10 min-w-[120px]">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" />
-                <span className="font-mono text-[9px] uppercase tracking-widest opacity-60">NODE {node}</span>
-                <span className="font-mono text-[9px] text-sky-400 font-bold ml-auto">LIVE</span>
-              </div>
-            ))}
+            {['node1', 'node2', 'node3', 'node4'].map((nodeId, idx) => {
+              const loc = nodes[nodeId];
+              return (
+                <div 
+                  key={nodeId} 
+                  onClick={() => loc ? handleSelectLocation(loc) : handleSaveNode(nodeId)}
+                  className={`flex-shrink-0 glass px-5 py-3 rounded-2xl flex items-center gap-4 border-sky-500/10 min-w-[160px] cursor-pointer hover:bg-white/5 transition-all group ${!loc ? 'border-dashed opacity-50' : ''}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${loc ? 'bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-zinc-700'}`} />
+                  <div className="flex flex-col">
+                    <span className="font-mono text-[9px] uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">NODE {idx + 1}</span>
+                    <span className="font-mono text-[11px] text-sky-400 font-bold truncate max-w-[100px]">
+                      {loc ? loc.split(',')[0] : 'SET LOCATION'}
+                    </span>
+                  </div>
+                  {loc && <span className="font-mono text-[8px] text-zinc-600 font-bold ml-auto group-hover:text-emerald-500 transition-colors">SYNC</span>}
+                </div>
+              );
+            })}
           </div>
           
           {/* Left Column (3) */}

@@ -19,6 +19,9 @@ import { db } from '../services/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { analyzeModelPerformance } from '../services/geminiService';
 import { 
+  ScatterChart,
+  Scatter,
+  ZAxis,
   ResponsiveContainer, 
   LineChart, 
   Line, 
@@ -353,22 +356,83 @@ export function DataScienceDashboard({ onBack }: DataScienceDashboardProps) {
         )}
 
         {activeTab === 'geography' && (
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-[40px] p-2 bg-white/5 min-h-[600px] relative overflow-hidden">
-             <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
-                <div className="text-center">
-                   <Globe className="w-16 h-16 opacity-10 mx-auto mb-6" />
-                   <h3 className="font-mono text-xs uppercase tracking-widest opacity-40">Spatial Error Heatmap (Vector Layer)</h3>
-                   <p className="text-xs opacity-20 mt-2 font-mono">Requires map-core integration</p>
-                   {/* Simplified Visualization of bubbles */}
-                   <div className="mt-12 flex flex-wrap justify-center gap-8 px-20">
-                      {logs.filter(l => l.coordinates).slice(0, 10).map((l, i) => (
-                        <div key={i} className="flex flex-col items-center">
-                           <div className={`w-8 h-8 rounded-full blur-[2px] transition-all hover:blur-0 animate-pulse ${Math.abs(l.errorDelta) > 3 ? 'bg-rose-500 shadow-[0_0_20px_#f43f5e]' : 'bg-emerald-500 shadow-[0_0_20px_#10b981]'}`} />
-                           <span className="text-[9px] font-mono opacity-20 mt-2">{l.location.split(',')[0]}</span>
-                        </div>
-                      ))}
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-[40px] p-8 bg-white/5 min-h-[600px] relative overflow-hidden">
+             <div className="relative z-10">
+                <h3 className="font-mono text-xs uppercase tracking-widest opacity-40 mb-8 flex justify-between items-center">
+                  Spatial Error Distribution
+                  <span className="text-[9px] text-zinc-500 lowercase">Coordinate Vector Analysis</span>
+                </h3>
+                
+                <div className="h-[500px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
+                      <XAxis 
+                        type="number" 
+                        dataKey="lon" 
+                        name="Longitude" 
+                        unit="°" 
+                        domain={['auto', 'auto']}
+                        stroke="#ffffff20" 
+                        fontSize={10} 
+                        fontFamily="monospace"
+                      />
+                      <YAxis 
+                        type="number" 
+                        dataKey="lat" 
+                        name="Latitude" 
+                        unit="°" 
+                        domain={['auto', 'auto']}
+                        stroke="#ffffff20" 
+                        fontSize={10} 
+                        fontFamily="monospace"
+                      />
+                      <ZAxis type="number" dataKey="error" range={[50, 400]} name="Error Magnitude" />
+                      <Tooltip 
+                        cursor={{ strokeDasharray: '3 3' }}
+                        contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #ffffff10', borderRadius: '16px' }}
+                        itemStyle={{ color: '#fff' }}
+                        formatter={(value, name) => [value, name]}
+                      />
+                      <Scatter 
+                        name="Neural Nodes" 
+                        data={logs.filter(l => l.coordinates).map(l => ({
+                          lat: l.coordinates.lat,
+                          lon: l.coordinates.lon,
+                          error: Math.abs(l.errorDelta),
+                          location: l.location.split(',')[0],
+                          variant: l.modelVariant
+                        }))}
+                        fill="#8884d8"
+                      >
+                        {logs.filter(l => l.coordinates).map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={Math.abs(entry.errorDelta) > 3 ? '#f43f5e' : '#10b981'} 
+                            strokeWidth={2}
+                            stroke={Math.abs(entry.errorDelta) > 5 ? '#f43f5e33' : 'transparent'}
+                          />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-8 flex justify-center gap-12">
+                   <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]" />
+                      <span className="text-[10px] font-mono uppercase tracking-widest opacity-40">Precision Locked (&lt;3°C Error)</span>
+                   </div>
+                   <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_10px_#f43f5e]" />
+                      <span className="text-[10px] font-mono uppercase tracking-widest opacity-40">Neural Drift (&gt;3°C Error)</span>
                    </div>
                 </div>
+             </div>
+
+             {/* Background Globe decorative element */}
+             <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
+                <Globe className="w-[800px] h-[800px]" />
              </div>
           </motion.div>
         )}
