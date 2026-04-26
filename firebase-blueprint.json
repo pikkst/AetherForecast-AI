@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "WeatherLog": {
+      "title": "Weather Log",
+      "description": "Historical record of actual vs predicted weather data for learning.",
+      "type": "object",
+      "properties": {
+        "location": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "actualTemp": { "type": "number" },
+        "predictedTemp": { "type": "number" },
+        "errorDelta": { "type": "number" }
+      },
+      "required": ["location", "timestamp", "actualTemp", "predictedTemp"]
+    },
+    "ModelPerformance": {
+      "title": "Model Performance",
+      "description": "Aggregated statistics on model accuracy over time.",
+      "type": "object",
+      "properties": {
+        "location": { "type": "string" },
+        "averageError": { "type": "number" },
+        "totalSamples": { "type": "integer" },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/weatherLogs/{logId}": {
+      "schema": "WeatherLog",
+      "description": "Collection of learning samples."
+    },
+    "/modelPerformance/{locationId}": {
+      "schema": "ModelPerformance",
+      "description": "Aggregated performance per location."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "AetherForecast AI",
+  "description": "Neural weather engine with integrated data science learning loop and predictive atmospherics.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": []
+}
